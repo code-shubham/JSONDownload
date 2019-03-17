@@ -1,0 +1,257 @@
+Home Controller
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using Excel = Microsoft.Office.Interop.Excel;
+using System.IO;
+using WebApplication3.Models;
+using Newtonsoft.Json;
+
+namespace ReadingExcelFile.Controllers
+{
+    public class HomeController : Controller
+    {
+
+
+        
+        // GET: Home
+        public ActionResult Index()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult Import(HttpPostedFileBase excelfile)
+        {
+            if (excelfile.ContentLength == 0)
+            {
+                ViewBag.error = "Please select excel file<br>";
+                return View("Index");
+            }
+
+            else
+            {
+                if (excelfile.FileName.EndsWith("xlsx") || (excelfile.FileName.EndsWith("xls")))
+                {
+
+                    string path = Server.MapPath("~/Content/" + excelfile.FileName);
+                    if (System.IO.File.Exists(path))
+
+                        System.IO.File.Delete(path);
+                    excelfile.SaveAs(path);
+
+                    Excel.Application application = new Excel.Application();
+                    Excel.Workbook workbook = application.Workbooks.Open(path);
+                    Excel.Worksheet worksheet = workbook.ActiveSheet;
+                    Excel.Range range = worksheet.UsedRange;
+
+
+
+                    product p = new product();
+                    p.org = new List<details>();
+
+                    ViewBag.yes = "success";
+                    for (int row = 2; row <= range.Rows.Count; row++)
+                    {
+
+                        p.org.Add(new details()
+                        {
+                            id = ((Excel.Range)range.Cells[row, 1]).Text,
+                            name = ((Excel.Range)range.Cells[row, 2]).Text,
+                            price = ((Excel.Range)range.Cells[row, 3]).Text,
+                            quantity = ((Excel.Range)range.Cells[row, 4]).Text
+                        });
+                    }
+
+                    TempData["name"] = p.org;
+                     
+                    ViewBag.ans = p.org;
+
+
+                    workbook.Close();
+                    return View("success");
+                }
+
+                else
+                {
+                    ViewBag.error = "file type is incorrect<br>";
+                    return View("Index");
+
+                }
+            }
+
+        }
+       
+         
+        
+        public JsonResult rr()
+        {
+            if (TempData.ContainsKey("name"))
+                ViewBag.data1 = TempData["name"];
+            TempData.Keep();
+            var json = JsonConvert.SerializeObject(ViewBag.data1);
+            return Json(json, JsonRequestBehavior.AllowGet);
+        }
+
+
+
+        public ActionResult jsondisp()
+        {
+            if (TempData.ContainsKey("name"))
+                ViewBag.data1 = TempData["name"];
+            TempData.Keep();
+            var json = JsonConvert.SerializeObject(ViewBag.data1);
+
+            string path = Server.MapPath("~/json/");
+            System.IO.File.WriteAllText(path + "data.json", json);
+
+              string fullpath = @"C:\Users\HP\source\repos\WebApplication3\WebApplication3\json\empjson.json";
+            byte[] fileBytes = System.IO.File.ReadAllBytes(fullpath);
+            string fileName = "data.json";
+            return File(fileBytes, System.Net.Mime.MediaTypeNames.Application.Octet, fileName);
+        }
+
+
+
+    }
+}
+
+
+*******************************************************************************
+
+Class Product
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+
+namespace WebApplication3.Models
+{
+    public class product
+    {
+        public List<details> org
+        {
+            get;
+            set;
+        }
+    }
+
+    public class details
+    {
+        public string id
+        {
+            get; set;
+        }
+        public string name
+        {
+            get; set;
+        }
+
+        public string price
+        {
+            get; set;
+        }
+
+        public string quantity
+        {
+            get; set;
+        }
+    }
+}
+
+
+******************************************************************************
+
+
+
+Views
+Index
+
+@{
+    Layout = null;
+}
+<!Doctype html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Index</title>
+</head>
+<body>
+    @using (Html.BeginForm("Import", "Home", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.Raw(ViewBag.error)
+        <span>Excel File</span> <input type="file" name="excelfile" />
+        <br />
+        <input type="submit" value="Import" />
+    }
+</body>
+</html>
+
+
+
+success
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Success</title>
+
+</head>
+<body>
+    <h3>List Products</h3>
+
+
+    <td><input type="button" value="View in JSON" onclick="@("window.location.href='" + @Url.Action("rr", "Home") + "'")    ;" /> </td>
+    <td><input type="button" value="Download JSON File" onclick="@("window.location.href='" + @Url.Action("jsondisp", "Home") + "'")    ;" /> </td>
+
+
+    <table cellpadding="2" , cellspacing="2" , border="1">
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Quantity</th>
+
+        </tr>
+
+        @foreach (var p in ViewBag.ans)
+        {
+            <tr>
+                <td>@p.id</td>
+                <td>@p.name</td>
+                <td>@p.price</td>
+                <td>@p.quantity</td>
+
+            </tr>
+        }
+    </table>
+</body>
+</html>
+
+
+
+
+RR
+
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>rr</title>
+</head>
+<body>
+    <div>
+
+    </div>
+</body>
+</html>
